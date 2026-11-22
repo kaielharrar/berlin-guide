@@ -10,6 +10,7 @@ Ein abonnierbarer Kalender mit Events in Berlin. GitHub Actions sammelt täglich
 |---|---|
 | Luma (lu.ma/berlin) | öffentliche Discover-Liste (JSON) |
 | berlin.de/events | RSS + schema.org-Daten der Detailseiten (Festivals, Märkte – ganztägig) |
+| Mit Vergnügen | RSS → Artikel → Claude extrahiert Termine (braucht Secret `ANTHROPIC_API_KEY`; Ergebnisse pro Artikel gecacht) |
 
 Nicht möglich: Rausgegangen (robots.txt sperrt Scraper), Resident Advisor (Bot-Schutz).
 Neue Quelle = Modul in `berlin_guide/sources/` mit `fetch(days, session) -> List[Event]`, dann in `SOURCES` in `berlin_guide/__main__.py` eintragen.

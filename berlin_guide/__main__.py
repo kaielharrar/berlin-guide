@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 import requests
 
 from . import curate, ics
-from .sources import berlinde, luma
+from .sources import berlinde, luma, mitvergnuegen
 
 ROOT = Path(__file__).resolve().parent.parent
 USER_AGENT = "berlin-guide/0.1 (private event calendar; +https://github.com/kaielharrar/berlin-guide)"
@@ -22,6 +22,7 @@ log = logging.getLogger("berlin_guide")
 SOURCES = {
     "luma": luma.fetch,
     "berlin.de": berlinde.fetch,
+    "Mit Vergnügen": mitvergnuegen.fetch,
 }
 
 
