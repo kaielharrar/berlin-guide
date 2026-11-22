@@ -18,9 +18,10 @@ import requests
 from bs4 import BeautifulSoup
 from pydantic import BaseModel
 
+from . import usage
 from .models import Event
 
-MODEL = "claude-opus-5-5"
+MODEL = "claude-sonnet-5-5"
 TZ = ZoneInfo("Europe/Berlin")
 CACHE_DIR = Path(__file__).resolve().parent.parent / "cache"
 MAX_TEXT = 30000
@@ -73,9 +74,10 @@ def page_text(s: requests.Session, url: str, selector: str = "") -> str:
     return root.get_text("\n", strip=True)[:MAX_TEXT]
 
 
-def extract(client: anthropic.Anthropic, title: str, as_of: datetime, text: str) -> List[ExtractedEvent]:
+def extract(client: anthropic.Anthropic, title: str, as_of: datetime, text: str,
+            model: str = MODEL) -> List[ExtractedEvent]:
     response = client.beta.messages.create(
-        model=MODEL,
+        model=model,
         max_tokens=16000,
         betas=["server-side-fallback-2026-07-01"],
         fallbacks="default",
@@ -86,6 +88,7 @@ def extract(client: anthropic.Anthropic, title: str, as_of: datetime, text: str)
             "content": f"Titel: {title}\nStand: {as_of:%Y-%m-%d}\n\n<seite>\n{text}\n</seite>",
         }],
     )
+    usage.record(response, "extract")
     if response.stop_reason == "refusal":
         raise RuntimeError("Claude hat die Anfrage abgelehnt")
     if response.stop_reason == "max_tokens":

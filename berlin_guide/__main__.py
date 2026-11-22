@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 
 import requests
 
-from . import curate, ics, score
+from . import curate, ics, score, usage
 from .sources import berlinde, luma, mitvergnuegen, private, web
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -79,6 +79,7 @@ def main() -> None:
         ics.write_feed(out / token / "weitere.ics", rest, "Berlin Guide – Weitere",
                        f"Alle übrigen Events (unter {min_score}/10)", personal=True)
         log.info("Für dich: %d, Weitere: %d (ab %d/10)", len(mine), len(rest), min_score)
+    log.info(usage.summary())
     if n == 0:
         raise SystemExit("Keine Events gefunden – Feed nicht aktualisieren.")
 

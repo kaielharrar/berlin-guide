@@ -18,6 +18,7 @@ from zoneinfo import ZoneInfo
 import anthropic
 from pydantic import BaseModel
 
+from . import usage
 from .models import Event
 
 log = logging.getLogger(__name__)
@@ -25,7 +26,7 @@ log = logging.getLogger(__name__)
 ROOT = Path(__file__).resolve().parent.parent
 PROFILE_FILE = ROOT / "config" / "interests.md"
 CACHE = ROOT / "cache" / "scores.json"
-MODEL = "claude-opus-5-5"
+MODEL = "claude-sonnet-5-5"
 BATCH = 25
 TZ = ZoneInfo("Europe/Berlin")
 
@@ -110,7 +111,8 @@ def score(events: List[Event]) -> bool:
     return True
 
 
-def _rate(client: anthropic.Anthropic, system: list, batch: List[Event]) -> List[dict]:
+def _rate(client: anthropic.Anthropic, system: list, batch: List[Event],
+          model: str = MODEL) -> List[dict]:
     ids = {str(n): e for n, e in enumerate(batch)}
     lines = []
     for n, e in ids.items():
@@ -120,7 +122,7 @@ def _rate(client: anthropic.Anthropic, system: list, batch: List[Event]) -> List
                  (e.description or "")[:400].replace("\n", " ")]
         lines.append(" | ".join(p for p in parts if p))
     response = client.beta.messages.create(
-        model=MODEL,
+        model=model,
         max_tokens=16000,
         betas=["server-side-fallback-2026-07-01"],
         fallbacks="default",
@@ -128,6 +130,7 @@ def _rate(client: anthropic.Anthropic, system: list, batch: List[Event]) -> List
         system=system,
         messages=[{"role": "user", "content": "Bewerte diese Events:\n" + "\n".join(lines)}],
     )
+    usage.record(response, "score")
     if response.stop_reason in ("refusal", "max_tokens"):
         raise RuntimeError(response.stop_reason)
     raw = next(b.text for b in response.content if b.type == "text")
