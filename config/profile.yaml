@@ -1,0 +1,21 @@
+# Dein Interessenprofil. Phase 1: einfache Stichwort-Zuordnung.
+# Phase 2: Claude nutzt dieses Profil zum Kuratieren.
+
+horizon_days: 30
+
+categories:
+  musik_clubs:
+    label: "Konzerte & Clubs"
+    keywords: [rave, techno, house music, dj, clubbing, club night, konzert, concert, live, gig, party, festival, jazz, band, open decks]
+  tech:
+    label: "Tech, Startup & Meetups"
+    keywords: [ai, " ki ", startup, founder, gründer, tech, product, hackathon, meetup, developer, data, vc, investor, networking, web3, demo day, builders]
+  kultur:
+    label: "Kultur & Ausstellungen"
+    keywords: [ausstellung, exhibition, gallery, galerie, art, kunst, museum, lesung, reading, film, kino, screening, theater, theatre, poetry, vernissage, talk]
+  food_draussen:
+    label: "Food, Märkte & Draußen"
+    keywords: [food, wine, wein, dinner, brunch, supper, markt, market, glühwein, flohmarkt, kochen, cooking, tasting, run club, running, walk, hike, outdoor, picnic, coffee]
+
+# Events mit diesen Begriffen ausblenden
+exclude_keywords: []
