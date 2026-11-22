@@ -38,6 +38,7 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
     profile = curate.load_profile(args.profile)
+    usage.set_daily_budget(profile.get("claude_budget_per_day_usd"))
     days = args.days or profile.get("horizon_days", 30)
     session = requests.Session()
     session.headers["User-Agent"] = USER_AGENT
@@ -80,6 +81,7 @@ def main() -> None:
                        f"Alle übrigen Events (unter {min_score}/10)", personal=True)
         log.info("Für dich: %d, Weitere: %d (ab %d/10)", len(mine), len(rest), min_score)
     log.info(usage.summary())
+    log.info(usage.save_budget())
     if n == 0:
         raise SystemExit("Keine Events gefunden – Feed nicht aktualisieren.")
 

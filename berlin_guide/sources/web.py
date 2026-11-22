@@ -25,6 +25,7 @@ from typing import List, Optional, Tuple
 import requests
 
 from .. import extract as ex
+from .. import usage
 from ..models import Event
 
 log = logging.getLogger(__name__)
@@ -45,8 +46,8 @@ def fetch_source(s: requests.Session, src: dict, days: int, private: bool, label
     for url, stamp in pages:
         if (cache.get(url) or {}).get("stamp") == stamp or client is None:
             continue
-        if new >= src.get("max_pages", 40):
-            break
+        if new >= src.get("max_pages", 40) or not usage.allow("extract"):
+            break  # Rest beim nächsten Lauf
         time.sleep(DELAY_S)
         try:
             text = ex.page_text(s, url, src.get("selector", ""))

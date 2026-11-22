@@ -15,6 +15,7 @@ from typing import List, Optional
 import requests
 
 from .. import extract as ex
+from .. import usage
 from ..models import Event
 
 log = logging.getLogger(__name__)
@@ -39,6 +40,8 @@ def fetch(days: int = 30, session: Optional[requests.Session] = None) -> List[Ev
         url = (item.findtext("link") or "").strip()
         if not url or url in cache or client is None:
             continue
+        if not usage.allow("extract"):
+            break  # Tagesbudget erreicht – Rest beim nächsten Lauf
         pub = item.findtext("pubDate")
         published = parsedate_to_datetime(pub) if pub else datetime.now(ex.TZ)
         title = (item.findtext("title") or "").strip()

@@ -93,6 +93,9 @@ def score(events: List[Event]) -> bool:
     system = [{"type": "text", "text": INSTRUCTIONS.format(profile=profile),
                "cache_control": {"type": "ephemeral"}}]
     for i in range(0, len(todo), BATCH):
+        if not usage.allow("score"):
+            log.warning("score: Tagesbudget erreicht – Rest wird morgen bewertet")
+            break
         batch = todo[i:i + BATCH]
         try:
             for r in _rate(client, system, batch):

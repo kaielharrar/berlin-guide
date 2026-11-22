@@ -76,6 +76,8 @@ def page_text(s: requests.Session, url: str, selector: str = "") -> str:
 
 def extract(client: anthropic.Anthropic, title: str, as_of: datetime, text: str,
             model: str = MODEL) -> List[ExtractedEvent]:
+    if not usage.allow("extract"):
+        raise usage.BudgetExceeded("Tagesbudget fürs Auslesen erreicht")
     response = client.messages.create(
         model=model,
         max_tokens=16000,

@@ -7,6 +7,10 @@ horizon_days: 30
 # Das Interessenprofil selbst ist privat: lokal config/interests.md, auf GitHub Secret INTEREST_PROFILE.
 min_score: 8
 
+# Obergrenze für Claude-Kosten pro Tag (alle Läufe zusammen). Auslesen max. 70 % davon,
+# der Rest bleibt fürs Bewerten. Liegengebliebenes wird am nächsten Tag nachgeholt.
+claude_budget_per_day_usd: 0.10
+
 categories:
   musik_clubs:
     label: "Konzerte & Clubs"
@@ -28,10 +32,10 @@ exclude_keywords: []
 web_sources:
   - name: The Berliner
     sitemap: https://www.the-berliner.com/sitemap_index.xml
-    max_age_days: 14
+    max_age_days: 7
     include: [/berlin/, /events/, /guides/, /food/, /music-clubs/, /art/, /film/, /stage/]
     exclude: [photo-of-the-week, where-to-buy, /partnership/, interview]
-    max_pages: 25
+    max_pages: 6
   - name: iHeartBerlin
     rss: https://www.iheartberlin.de/feed/
     max_age_days: 30

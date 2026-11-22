@@ -50,3 +50,52 @@ def reset() -> None:
 
 def totals() -> Dict[str, Dict[str, float]]:
     return _totals
+
+
+# --- Tagesbudget --------------------------------------------------------------
+# Gezählt wird über alle Läufe eines Tages (Stand in cache/budget.json, wandert mit
+# dem Actions-Cache). Auslesen darf höchstens EXTRACT_SHARE des Budgets verbrauchen,
+# damit fürs Bewerten neuer Events immer etwas übrig bleibt. Was wegen des Budgets
+# liegen bleibt, wird nicht gecacht und am nächsten Tag nachgeholt.
+import json as _json
+from datetime import date as _date
+from pathlib import Path as _Path
+
+EXTRACT_SHARE = 0.7
+_BUDGET_FILE = _Path(__file__).resolve().parent.parent / "cache" / "budget.json"
+_budget = {"limit": None, "day": "", "spent_before": 0.0}
+
+
+class BudgetExceeded(RuntimeError):
+    pass
+
+
+def set_daily_budget(limit_usd) -> None:
+    _budget["limit"] = float(limit_usd) if limit_usd else None
+    today = _date.today().isoformat()
+    try:
+        saved = _json.loads(_BUDGET_FILE.read_text())
+    except (OSError, ValueError):
+        saved = {}
+    _budget["day"] = today
+    _budget["spent_before"] = float(saved.get("spent", 0.0)) if saved.get("day") == today else 0.0
+
+
+def spent_today() -> float:
+    run = sum(cost(k.split(":", 1)[1], t) for k, t in _totals.items())
+    return _budget["spent_before"] + run
+
+
+def allow(kind: str) -> bool:
+    limit = _budget["limit"]
+    if limit is None:
+        return True
+    cap = limit * EXTRACT_SHARE if kind == "extract" else limit
+    return spent_today() < cap
+
+
+def save_budget() -> str:
+    _BUDGET_FILE.parent.mkdir(parents=True, exist_ok=True)
+    _BUDGET_FILE.write_text(_json.dumps({"day": _budget["day"], "spent": round(spent_today(), 4)}))
+    limit = _budget["limit"]
+    return f"Budget heute: ${spent_today():.3f}" + (f" von ${limit:.2f}" if limit else " (kein Limit)")
