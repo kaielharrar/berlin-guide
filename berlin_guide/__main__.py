@@ -6,13 +6,14 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import requests
 
-from . import curate, ics
+from . import curate, ics, score
 from .sources import berlinde, luma, mitvergnuegen
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -58,6 +59,15 @@ def main() -> None:
                        "Events in Berlin aus " + ", ".join(SOURCES))
     (out / "index.html").write_text(_landing(n, counts), encoding="utf-8")
     log.info("Fertig: %d Events %s -> %s", n, counts, out / "berlin.ics")
+
+    # Persönlicher Feed unter geheimem Pfad (FEED_TOKEN), nirgends verlinkt.
+    if score.score(events):
+        min_score = int(profile.get("min_score", 7))
+        mine = [e for e in events if e.score is not None and e.score >= min_score]
+        token = os.environ.get("FEED_TOKEN") or "privat"
+        ics.write_feed(out / token / "fuer-dich.ics", mine, "Berlin Guide – Für dich",
+                       f"Persönlich ausgewählt (ab {min_score}/10)", personal=True)
+        log.info("Für dich: %d von %d Events (ab %d/10)", len(mine), n, min_score)
     if n == 0:
         raise SystemExit("Keine Events gefunden – Feed nicht aktualisieren.")
 

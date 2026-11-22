@@ -3,6 +3,10 @@
 
 horizon_days: 30
 
+# Persönlicher Feed: nur Events ab dieser Claude-Bewertung (0–10).
+# Das Interessenprofil selbst ist privat: lokal config/interests.md, auf GitHub Secret INTEREST_PROFILE.
+min_score: 7
+
 categories:
   musik_clubs:
     label: "Konzerte & Clubs"

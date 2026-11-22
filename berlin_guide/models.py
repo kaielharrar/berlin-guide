@@ -38,6 +38,8 @@ class Event:
     guest_count: Optional[int] = None
     has_waitlist: bool = False
     all_day: bool = False          # mehrtägige Events (Festivals, Märkte): nur Datum
+    score: Optional[int] = None    # persönliche Relevanz 0–10 (score.py)
+    score_reason: str = ""
     tags: List[str] = field(default_factory=list)
 
     @property

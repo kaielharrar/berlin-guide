@@ -2,3 +2,5 @@
 __pycache__/
 out/
 cache/
+config/interests.md
+config/feed_token.txt

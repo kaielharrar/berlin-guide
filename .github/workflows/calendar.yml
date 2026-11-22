@@ -36,6 +36,8 @@ jobs:
       - run: python -m berlin_guide --out site
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          INTEREST_PROFILE: ${{ secrets.INTEREST_PROFILE }}
+          FEED_TOKEN: ${{ secrets.FEED_TOKEN }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
