@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Dict, List
 
@@ -34,10 +35,32 @@ def exclude(events: List[Event], profile: dict) -> List[Event]:
 
 
 def dedupe(events: List[Event]) -> List[Event]:
-    """Gleiches Event auf mehreren Plattformen: gleicher Tag + ähnlicher Titel."""
-    seen: Dict[str, Event] = {}
-    for ev in sorted(events, key=lambda e: e.start):
-        key = f"{ev.start.date()}|{slug(ev.title)[:30]}"
-        if key not in seen:
-            seen[key] = ev
-    return list(seen.values())
+    """Gleiches Event mehrfach (auch quellenübergreifend): gleicher Starttag und
+    ein Titel steckt im anderen oder sie sind sehr ähnlich. Bevorzugt den Eintrag
+    mit Uhrzeit, sonst den ausführlicheren."""
+    by_day: Dict[object, List[Event]] = {}
+    for ev in events:
+        by_day.setdefault(ev.start.date(), []).append(ev)
+    out: List[Event] = []
+    for day_events in by_day.values():
+        kept: List[Event] = []
+        for ev in sorted(day_events, key=lambda e: (e.all_day, -len(e.description))):
+            if not any(_same(ev.title, k.title) for k in kept):
+                kept.append(ev)
+        out += kept
+    return sorted(out, key=lambda e: e.start)
+
+
+def _norm(title: str) -> str:
+    return " ".join(slug(title).split("-"))
+
+
+def _same(a: str, b: str) -> bool:
+    na, nb = _norm(a), _norm(b)
+    if not na or not nb:
+        return False
+    short, long_ = sorted((na, nb), key=len)
+    # Enthaltensein nur bei ausreichend langen Titeln („Yoga“ ≠ „Yoga im Park“)
+    if len(short) >= 12 and short in long_:
+        return True
+    return SequenceMatcher(None, na, nb).ratio() >= 0.9
