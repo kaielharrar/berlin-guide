@@ -73,7 +73,11 @@ def main() -> None:
         token = os.environ.get("FEED_TOKEN") or "privat"
         ics.write_feed(out / token / "fuer-dich.ics", mine, "Berlin Guide – Für dich",
                        f"Persönlich ausgewählt (ab {min_score}/10)", personal=True)
-        log.info("Für dich: %d von %d Events (ab %d/10)", len(mine), len(events), min_score)
+        # „Weitere“: genau der Rest – zusammen mit „Für dich“ alle Events, ohne Überschneidung
+        rest = [e for e in events if e.score is None or e.score < min_score]
+        ics.write_feed(out / token / "weitere.ics", rest, "Berlin Guide – Weitere",
+                       f"Alle übrigen Events (unter {min_score}/10)", personal=True)
+        log.info("Für dich: %d, Weitere: %d (ab %d/10)", len(mine), len(rest), min_score)
     if n == 0:
         raise SystemExit("Keine Events gefunden – Feed nicht aktualisieren.")
 
