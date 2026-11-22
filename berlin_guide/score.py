@@ -26,7 +26,7 @@ log = logging.getLogger(__name__)
 ROOT = Path(__file__).resolve().parent.parent
 PROFILE_FILE = ROOT / "config" / "interests.md"
 CACHE = ROOT / "cache" / "scores.json"
-MODEL = "claude-sonnet-5-5"
+MODEL = "claude-sonnet-5"
 BATCH = 25
 TZ = ZoneInfo("Europe/Berlin")
 
@@ -121,12 +121,10 @@ def _rate(client: anthropic.Anthropic, system: list, batch: List[Event],
         parts = [f"[{n}] {e.title}", when, e.venue or e.address, e.organizer, e.price_text,
                  (e.description or "")[:400].replace("\n", " ")]
         lines.append(" | ".join(p for p in parts if p))
-    response = client.beta.messages.create(
+    response = client.messages.create(
         model=model,
         max_tokens=16000,
-        betas=["server-side-fallback-2026-07-01"],
-        fallbacks="default",
-        output_config={"effort": "low", "format": {"type": "json_schema", "schema": SCHEMA}},
+        output_config={"effort": "medium", "format": {"type": "json_schema", "schema": SCHEMA}},
         system=system,
         messages=[{"role": "user", "content": "Bewerte diese Events:\n" + "\n".join(lines)}],
     )

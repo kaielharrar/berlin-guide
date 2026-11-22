@@ -16,7 +16,7 @@ from . import score, usage
 from .__main__ import USER_AGENT
 from .sources import luma
 
-MODELS = ["claude-sonnet-5-5", "claude-opus-5-5"]
+MODELS = ["claude-sonnet-5"]  # weitere Modelle nur bewusst ergänzen – jeder Lauf kostet
 PAGES = [
     ("https://www.the-berliner.com/berlin/what-to-do-this-weekend-best-events/", ""),
     ("https://www.the-berliner.com/events/whats-on-this-week-daily-tips-berlin/", ""),
@@ -52,6 +52,8 @@ def main() -> None:
         log.info("%s: Bewertung $%.4f/Event (%d Events) | Auslesen $%.4f/Seite (%d Seiten, Termine je Seite %s) | %s",
                  model, sc / max(len(ratings), 1), len(ratings), xc / max(len(texts), 1), len(texts), found,
                  usage.summary())
+    if len(MODELS) < 2:
+        return
     a, b = results[MODELS[0]], results[MODELS[1]]
     common = [u for u in a if u in b]
     if common:

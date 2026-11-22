@@ -21,7 +21,7 @@ from pydantic import BaseModel
 from . import usage
 from .models import Event
 
-MODEL = "claude-sonnet-5-5"
+MODEL = "claude-sonnet-5"
 TZ = ZoneInfo("Europe/Berlin")
 CACHE_DIR = Path(__file__).resolve().parent.parent / "cache"
 MAX_TEXT = 30000
@@ -76,12 +76,10 @@ def page_text(s: requests.Session, url: str, selector: str = "") -> str:
 
 def extract(client: anthropic.Anthropic, title: str, as_of: datetime, text: str,
             model: str = MODEL) -> List[ExtractedEvent]:
-    response = client.beta.messages.create(
+    response = client.messages.create(
         model=model,
         max_tokens=16000,
-        betas=["server-side-fallback-2026-07-01"],
-        fallbacks="default",
-        output_config={"effort": "low", "format": {"type": "json_schema", "schema": _schema()}},
+        output_config={"effort": "medium", "format": {"type": "json_schema", "schema": _schema()}},
         system=SYSTEM,
         messages=[{
             "role": "user",
