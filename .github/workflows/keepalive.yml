@@ -1,0 +1,24 @@
+name: Keepalive
+
+# GitHub pausiert geplante Workflows in öffentlichen Repos nach 60 Tagen ohne
+# Aktivität. Ein leerer Commit am 1. jedes Monats hält den täglichen Kalender-Lauf aktiv.
+# Commits mit dem GITHUB_TOKEN lösen keine weiteren Workflow-Läufe aus.
+
+on:
+  schedule:
+    - cron: "0 3 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit --allow-empty -m "keepalive: geplante Läufe aktiv halten"
+          git push
