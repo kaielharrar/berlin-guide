@@ -23,7 +23,7 @@ from ..models import Event
 log = logging.getLogger(__name__)
 
 FEEDS = ["https://www.berlin.de/events/index.rss"]
-DELAY_S = 1.0
+DELAY_S = 3.0  # berlin.de drosselt bei 1 s mit HTTP 429
 TZ = ZoneInfo("Europe/Berlin")
 LD_RE = re.compile(r'<script type="application/ld\+json">(.*?)</script>', re.S)
 
