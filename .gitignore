@@ -4,3 +4,4 @@ out/
 cache/
 config/interests.md
 config/feed_token.txt
+config/sources.private.yaml

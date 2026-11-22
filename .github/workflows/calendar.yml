@@ -38,6 +38,7 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           INTEREST_PROFILE: ${{ secrets.INTEREST_PROFILE }}
           FEED_TOKEN: ${{ secrets.FEED_TOKEN }}
+          PRIVATE_SOURCES: ${{ secrets.PRIVATE_SOURCES }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site

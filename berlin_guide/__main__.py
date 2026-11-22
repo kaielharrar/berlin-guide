@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 import requests
 
 from . import curate, ics, score
-from .sources import berlinde, luma, mitvergnuegen
+from .sources import berlinde, luma, mitvergnuegen, private
 
 ROOT = Path(__file__).resolve().parent.parent
 USER_AGENT = "berlin-guide/0.1 (private event calendar; +https://github.com/kaielharrar/berlin-guide)"
@@ -24,6 +24,7 @@ SOURCES = {
     "luma": luma.fetch,
     "berlin.de": berlinde.fetch,
     "Mit Vergnügen": mitvergnuegen.fetch,
+    "privat": private.fetch,  # Quellenliste im Secret PRIVATE_SOURCES, nur persönlicher Feed
 }
 
 
@@ -55,10 +56,14 @@ def main() -> None:
     curate.tag(events, profile)
 
     out: Path = args.out
-    n = ics.write_feed(out / "berlin.ics", events, "Berlin Guide",
-                       "Events in Berlin aus " + ", ".join(SOURCES))
-    (out / "index.html").write_text(_landing(n, counts), encoding="utf-8")
-    log.info("Fertig: %d Events %s -> %s", n, counts, out / "berlin.ics")
+    # Öffentlicher Feed ohne Events aus privaten Quellen
+    public = [e for e in events if not e.private]
+    public_counts = {k: v for k, v in counts.items() if k != "privat"}
+    n = ics.write_feed(out / "berlin.ics", public, "Berlin Guide",
+                       "Events in Berlin aus " + ", ".join(public_counts))
+    (out / "index.html").write_text(_landing(n, public_counts), encoding="utf-8")
+    log.info("Fertig: %d öffentliche Events %s, %d privat -> %s",
+             n, public_counts, len(events) - n, out / "berlin.ics")
 
     # Persönlicher Feed unter geheimem Pfad (FEED_TOKEN), nirgends verlinkt.
     if score.score(events):
@@ -67,7 +72,7 @@ def main() -> None:
         token = os.environ.get("FEED_TOKEN") or "privat"
         ics.write_feed(out / token / "fuer-dich.ics", mine, "Berlin Guide – Für dich",
                        f"Persönlich ausgewählt (ab {min_score}/10)", personal=True)
-        log.info("Für dich: %d von %d Events (ab %d/10)", len(mine), n, min_score)
+        log.info("Für dich: %d von %d Events (ab %d/10)", len(mine), len(events), min_score)
     if n == 0:
         raise SystemExit("Keine Events gefunden – Feed nicht aktualisieren.")
 
