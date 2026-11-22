@@ -1,6 +1,7 @@
 """Phase 1: regelbasiertes Taggen, Filtern und Dedupe. (Phase 2: Claude.)"""
 from __future__ import annotations
 
+import os
 import re
 from difflib import SequenceMatcher
 from pathlib import Path
@@ -45,10 +46,21 @@ def dedupe(events: List[Event]) -> List[Event]:
     for day_events in by_day.values():
         kept: List[Event] = []
         for ev in sorted(day_events, key=lambda e: (e.all_day, -len(e.description))):
-            if not any(_same(ev.title, k.title) for k in kept):
+            if not any(_same(ev.title, k.title) or _same_source_variant(ev, k) for k in kept):
                 kept.append(ev)
         out += kept
     return sorted(out, key=lambda e: e.start)
+
+
+def _same_source_variant(a: Event, b: Event) -> bool:
+    """Gleiche Quelle, gleicher Tag, Titel beginnen gleich – z. B. eine Workshop-Seite
+    und die Programmseite desselben Veranstalters („Surrender“ / „Surrender mit Andy“)."""
+    if a.source != b.source:
+        return False
+    na, nb = _norm(a.title), _norm(b.title)
+    short = min(len(na), len(nb))
+    common = len(os.path.commonprefix([na, nb]))
+    return common >= 8 and (common == short or common >= 15)
 
 
 def _norm(title: str) -> str:

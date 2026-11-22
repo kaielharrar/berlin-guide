@@ -57,6 +57,9 @@ def fetch(days: int = 30, session: Optional[requests.Session] = None) -> List[Ev
 
 def _detail(s: requests.Session, url: str, item) -> Optional[Event]:
     r = s.get(url, timeout=20)
+    if r.status_code == 429:  # gedrosselt: Wartezeit respektieren, einmal neu versuchen
+        time.sleep(min(int(r.headers.get("Retry-After", "20") or 20), 60))
+        r = s.get(url, timeout=20)
     r.raise_for_status()
     data = None
     for block in LD_RE.findall(r.text):
