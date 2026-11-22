@@ -52,6 +52,7 @@ def main() -> None:
         counts[name] = len(got)
         events += got
 
+    curate.normalize_multiday(events)
     events = curate.dedupe(curate.exclude(events, profile))
     curate.tag(events, profile)
 

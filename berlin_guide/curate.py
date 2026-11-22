@@ -3,13 +3,17 @@ from __future__ import annotations
 
 import os
 import re
+from datetime import datetime, time as dtime, timedelta
 from difflib import SequenceMatcher
+from zoneinfo import ZoneInfo
 from pathlib import Path
 from typing import Dict, List
 
 import yaml
 
 from .models import Event, slug
+
+BERLIN = ZoneInfo("Europe/Berlin")
 
 
 def load_profile(path: Path) -> dict:
@@ -33,6 +37,21 @@ def _match(kw: str, hay: str) -> bool:
 def exclude(events: List[Event], profile: dict) -> List[Event]:
     bad = [k.lower() for k in profile.get("exclude_keywords") or []]
     return [e for e in events if not any(b in e.title.lower() for b in bad)]
+
+
+def normalize_multiday(events: List[Event]) -> None:
+    """Termine mit Uhrzeit über mehr als 48 h (z. B. Markt „16.11.–30.12., 17–22 Uhr“)
+    werden ganztägig – sonst blockieren sie den Kalender wochenlang am Stück.
+    Die Uhrzeiten bleiben als Öffnungszeiten in der Beschreibung."""
+    for ev in events:
+        if ev.all_day or not ev.end or ev.end - ev.start <= timedelta(hours=48):
+            continue
+        s, e = ev.start.astimezone(BERLIN), ev.end.astimezone(BERLIN)
+        hours = f"Öffnungszeiten: {s:%H:%M}–{e:%H:%M} Uhr"
+        ev.description = f"{hours}\n{ev.description}" if ev.description else hours
+        ev.start = datetime.combine(s.date(), dtime.min, BERLIN)
+        ev.end = datetime.combine(e.date(), dtime.min, BERLIN)
+        ev.all_day = True
 
 
 def dedupe(events: List[Event]) -> List[Event]:
