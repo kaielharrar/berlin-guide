@@ -23,3 +23,15 @@ categories:
 
 # Events mit diesen Begriffen ausblenden
 exclude_keywords: []
+
+# Öffentliche Magazine: Seiten per Sitemap/RSS, Claude extrahiert die Termine.
+web_sources:
+  - name: The Berliner
+    sitemap: https://www.the-berliner.com/sitemap_index.xml
+    max_age_days: 14
+    include: [/berlin/, /events/, /guides/, /food/, /music-clubs/, /art/, /film/, /stage/]
+    exclude: [photo-of-the-week, where-to-buy, /partnership/, interview]
+    max_pages: 25
+  - name: iHeartBerlin
+    rss: https://www.iheartberlin.de/feed/
+    max_age_days: 30

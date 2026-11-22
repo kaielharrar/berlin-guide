@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 import requests
 
 from . import curate, ics, score
-from .sources import berlinde, luma, mitvergnuegen, private
+from .sources import berlinde, luma, mitvergnuegen, private, web
 
 ROOT = Path(__file__).resolve().parent.parent
 USER_AGENT = "berlin-guide/0.1 (private event calendar; +https://github.com/kaielharrar/berlin-guide)"
@@ -24,6 +24,7 @@ SOURCES = {
     "luma": luma.fetch,
     "berlin.de": berlinde.fetch,
     "Mit Vergnügen": mitvergnuegen.fetch,
+    "Magazine": web.fetch_public,  # web_sources in config/profile.yaml
     "privat": private.fetch,  # Quellenliste im Secret PRIVATE_SOURCES, nur persönlicher Feed
 }
 

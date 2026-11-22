@@ -64,7 +64,8 @@ def dedupe(events: List[Event]) -> List[Event]:
     out: List[Event] = []
     for day_events in by_day.values():
         kept: List[Event] = []
-        for ev in sorted(day_events, key=lambda e: (e.all_day, -len(e.description))):
+        # öffentliche Einträge zuerst behalten, sonst fehlte das Event im öffentlichen Feed
+        for ev in sorted(day_events, key=lambda e: (e.private, e.all_day, -len(e.description))):
             if not any(_same(ev.title, k.title) or _same_source_variant(ev, k) for k in kept):
                 kept.append(ev)
         out += kept

@@ -9,7 +9,7 @@ Format (YAML):
     - name: Beispielgruppe
       url: https://www.meetup.com/<gruppe>/events/ical/
       berlin_only: true        # optional, Standard true
-  sitemap:
+  sitemap:                     # oder rss: (siehe sources/web.py)
     - name: Beispiel-Institut
       url: https://example.org/sitemap.xml
       max_age_days: 120        # nur Seiten, die so kürzlich geändert wurden
@@ -21,8 +21,6 @@ import hashlib
 import logging
 import os
 import re
-import time
-import xml.etree.ElementTree as ET
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import List, Optional
@@ -32,16 +30,15 @@ import yaml
 from icalendar import Calendar
 
 from .. import extract as ex
+from . import web
 from ..models import Event
 
 log = logging.getLogger(__name__)
 
 CONFIG_FILE = Path(__file__).resolve().parents[2] / "config" / "sources.private.yaml"
-CACHE_FILE = "private_pages.json"
 DELAY_S = 1.0
 BERLIN_RE = re.compile(r"berlin|\b1[0-4]\d{3}\b", re.I)
 ONLINE_RE = re.compile(r"^\s*(https?://|online|zoom|virtual)", re.I)
-SM_NS = "{http://www.sitemaps.org/schemas/sitemap/0.9}"
 
 
 def load_config() -> dict:
@@ -62,13 +59,11 @@ def fetch(days: int = 30, session: Optional[requests.Session] = None) -> List[Ev
             out += got
         except Exception as exc:  # noqa: BLE001
             log.warning("privat ical #%d fehlgeschlagen (%s)", i, type(exc).__name__)
-    for i, src in enumerate(cfg.get("sitemap") or [], 1):
+    for i, src in enumerate((cfg.get("sitemap") or []) + (cfg.get("rss") or []), 1):
         try:
-            got = _sitemap(s, src, days)
-            log.info("privat sitemap #%d: %d Events", i, len(got))
-            out += got
+            out += _web(s, src, days, f"privat web #{i}")
         except Exception as exc:  # noqa: BLE001
-            log.warning("privat sitemap #%d fehlgeschlagen (%s)", i, type(exc).__name__)
+            log.warning("privat web #%d fehlgeschlagen (%s)", i, type(exc).__name__)
     return out
 
 
@@ -123,48 +118,25 @@ def _first_url(text: str) -> str:
     return m.group(0).rstrip(").,") if m else ""
 
 
-# --- Sitemap + Claude ---------------------------------------------------------
+# --- Webseiten (Sitemap/RSS) + Claude -> sources/web.py -----------------------
 
-def _sitemap(s: requests.Session, src: dict, days: int) -> List[Event]:
-    cache = ex.load_cache(CACHE_FILE)
-    client = ex.client_or_none()
-    r = s.get(src["url"], timeout=30)
-    r.raise_for_status()
-    cutoff = (datetime.now(ex.TZ) - timedelta(days=src.get("max_age_days", 120))).date().isoformat()
-    excludes = [x.lower() for x in src.get("exclude") or []]
-    name = src.get("name", "privat")
-    new = 0
-    pages = []
-    for u in ET.fromstring(r.content).iter(f"{SM_NS}url"):
-        loc = (u.findtext(f"{SM_NS}loc") or "").strip()
-        lastmod = (u.findtext(f"{SM_NS}lastmod") or "")[:10]
-        if loc and lastmod >= cutoff and not any(x in loc.lower() for x in excludes):
-            pages.append((loc, lastmod))
-    for loc, lastmod in pages:
-        cached = cache.get(loc)
-        if (cached and cached.get("lastmod") == lastmod) or client is None:
-            continue  # unverändert oder kein API-Key
-        time.sleep(DELAY_S)
-        try:
-            text = ex.page_text(s, loc)
-            extracted = ex.extract(client, loc.rsplit("/", 1)[-1], datetime.now(ex.TZ), text)
-        except Exception as exc:  # noqa: BLE001
-            log.warning("privat sitemap: Seite übersprungen (%s)", type(exc).__name__)
-            continue
-        cache[loc] = {"lastmod": lastmod, "events": [e.model_dump() for e in extracted]}
-        new += 1
-    # Seiten, die nicht mehr in der Sitemap-Auswahl sind, aus dem Cache entfernen
-    keep = {loc for loc, _ in pages}
-    prefix = src["url"].rsplit("/", 1)[0]
-    for loc in [k for k in cache if k.startswith(prefix) and k not in keep]:
-        del cache[loc]
-    ex.save_cache(CACHE_FILE, cache)
+def _web(s: requests.Session, src: dict, days: int, label: str) -> List[Event]:
+    src = dict(src)
+    if "url" in src and "sitemap" not in src and "rss" not in src:
+        src["sitemap"] = src.pop("url")
+    _migrate_old_cache(src)
+    return web.fetch_source(s, src, days, private=True, label=label)
 
-    out = []
-    for loc, _ in pages:
-        for raw in (cache.get(loc) or {}).get("events", []):
-            ev = ex.to_event(ex.ExtractedEvent(**raw), loc, name, "privat-web", private=True)
-            if ev and ex.in_window(ev, days):
-                out.append(ev)
-    log.info("privat sitemap: %d Seiten, %d neu ausgewertet", len(pages), new)
-    return out
+
+def _migrate_old_cache(src: dict) -> None:
+    """Einmalig: alten Cache (private_pages.json) ins neue Format übernehmen,
+    damit bereits ausgewertete Seiten nicht erneut an Claude gehen."""
+    old = ex.load_cache("private_pages.json")
+    if not old:
+        return
+    name = f"web_{hashlib.sha1(src['sitemap'].encode()).hexdigest()[:10]}.json"
+    new = ex.load_cache(name)
+    for url, entry in old.items():
+        new.setdefault(url, {"stamp": entry.get("lastmod", ""), "events": entry.get("events", [])})
+    ex.save_cache(name, new)
+    (ex.CACHE_DIR / "private_pages.json").unlink(missing_ok=True)
