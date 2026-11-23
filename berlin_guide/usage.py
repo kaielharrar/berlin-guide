@@ -101,4 +101,4 @@ def save_budget() -> str:
     _BUDGET_FILE.parent.mkdir(parents=True, exist_ok=True)
     _BUDGET_FILE.write_text(_json.dumps({"day": _budget["day"], "spent": round(spent_today(), 4)}))
     limit = _budget["limit"]
-    return f"Budget heute: ${spent_today():.3f}" + (f" von ${limit:.2f}" if limit else " (kein Limit)")
+    return f"Budget heute: ${spent_today():.3f}" + (f" von ${limit:.3f}" if limit else " (kein Limit)")
