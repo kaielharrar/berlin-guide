@@ -61,7 +61,10 @@ import json as _json
 from datetime import date as _date
 from pathlib import Path as _Path
 
-EXTRACT_SHARE = 0.7
+EXTRACT_SHARE = 0.6
+# Geschätzte Kosten eines Aufrufs (Sonnet 5, medium): ein Aufruf startet nur, wenn er
+# voraussichtlich noch ins Budget passt – so wird das Limit nicht um einen Aufruf überzogen.
+ESTIMATE = {"extract": 0.03, "score": 0.015}
 _BUDGET_FILE = _Path(__file__).resolve().parent.parent / "cache" / "budget.json"
 _budget = {"limit": None, "day": "", "spent_before": 0.0}
 
@@ -91,7 +94,7 @@ def allow(kind: str) -> bool:
     if limit is None:
         return True
     cap = limit * EXTRACT_SHARE if kind == "extract" else limit
-    return spent_today() < cap
+    return spent_today() + ESTIMATE.get(kind, 0.0) <= cap
 
 
 def save_budget() -> str:

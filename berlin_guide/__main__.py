@@ -7,7 +7,7 @@ from __future__ import annotations
 import argparse
 import logging
 import os
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -20,13 +20,22 @@ ROOT = Path(__file__).resolve().parent.parent
 USER_AGENT = "berlin-guide/0.1 (private event calendar; +https://github.com/kaielharrar/berlin-guide)"
 log = logging.getLogger("berlin_guide")
 
-SOURCES = {
+FREE_SOURCES = {  # ohne Claude
     "luma": luma.fetch,
     "berlin.de": berlinde.fetch,
+}
+CLAUDE_SOURCES = {  # lesen Seiten mit Claude aus – teilen sich das Tagesbudget
     "Mit Vergnügen": mitvergnuegen.fetch,
     "Magazine": web.fetch_public,  # web_sources in config/profile.yaml
     "privat": private.fetch,  # Quellenliste im Secret PRIVATE_SOURCES, nur persönlicher Feed
 }
+
+
+def _sources() -> dict:
+    """Reihenfolge der Claude-Quellen rotiert täglich, damit bei knappem Budget jede mal zuerst dran ist."""
+    names = list(CLAUDE_SOURCES)
+    k = date.today().toordinal() % len(names)
+    return {**FREE_SOURCES, **{n: CLAUDE_SOURCES[n] for n in names[k:] + names[:k]}}
 
 
 def main() -> None:
@@ -45,7 +54,7 @@ def main() -> None:
 
     events, counts = [], {}
     # Jede Quelle einzeln absichern: fällt eine aus, laufen die anderen weiter.
-    for name, fetch in SOURCES.items():
+    for name, fetch in _sources().items():
         try:
             got = fetch(days=days, session=session)
         except Exception as exc:  # noqa: BLE001

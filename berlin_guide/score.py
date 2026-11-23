@@ -27,7 +27,7 @@ ROOT = Path(__file__).resolve().parent.parent
 PROFILE_FILE = ROOT / "config" / "interests.md"
 CACHE = ROOT / "cache" / "scores.json"
 MODEL = "claude-sonnet-5"
-BATCH = 25
+BATCH = 15  # ~0,015 $ pro Batch
 TZ = ZoneInfo("Europe/Berlin")
 
 INSTRUCTIONS = """Du bewertest Veranstaltungen in Berlin danach, wie gut sie zu der Person passen,
@@ -85,7 +85,8 @@ def score(events: List[Event]) -> bool:
         cache = {"profile_version": version, "scores": {}}  # Profil geändert -> neu bewerten
     scores: Dict[str, dict] = cache["scores"]
 
-    todo = [e for e in events if e.uid not in scores]
+    # Bald stattfindende Events zuerst – reicht das Tagesbudget nicht, kommt der Rest morgen dran
+    todo = sorted((e for e in events if e.uid not in scores), key=lambda e: e.start)
     client = anthropic.Anthropic() if os.environ.get("ANTHROPIC_API_KEY") else None
     if todo and client is None:
         log.warning("score: kein ANTHROPIC_API_KEY – %d Events unbewertet", len(todo))

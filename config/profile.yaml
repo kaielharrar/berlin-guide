@@ -9,7 +9,7 @@ min_score: 8
 
 # Obergrenze für Claude-Kosten pro Tag (alle Läufe zusammen). Auslesen max. 70 % davon,
 # der Rest bleibt fürs Bewerten. Liegengebliebenes wird am nächsten Tag nachgeholt.
-claude_budget_per_day_usd: 0.10
+claude_budget_per_day_usd: 0.055   # ≈ 0,05 € – was nicht reinpasst, wird an den Folgetagen nachgeholt
 
 categories:
   musik_clubs:
