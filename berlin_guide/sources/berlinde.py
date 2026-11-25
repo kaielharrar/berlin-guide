@@ -35,8 +35,7 @@ def fetch(days: int = 30, session: Optional[requests.Session] = None) -> List[Ev
     out: List[Event] = []
     seen = set()
     for feed in FEEDS:
-        r = s.get(feed, timeout=20)
-        r.raise_for_status()
+        r = _get(s, feed)
         for item in ET.fromstring(r.content).iter("item"):
             link = (item.findtext("link") or "").strip()
             if not link or link in seen:
@@ -55,12 +54,20 @@ def fetch(days: int = 30, session: Optional[requests.Session] = None) -> List[Ev
     return out
 
 
-def _detail(s: requests.Session, url: str, item) -> Optional[Event]:
-    r = s.get(url, timeout=20)
-    if r.status_code == 429:  # gedrosselt: Wartezeit respektieren, einmal neu versuchen
-        time.sleep(min(int(r.headers.get("Retry-After", "20") or 20), 60))
+def _get(s: requests.Session, url: str) -> requests.Response:
+    """Bei HTTP 429 (gedrosselt) Wartezeit respektieren und bis zu zweimal neu versuchen."""
+    for attempt in range(3):
         r = s.get(url, timeout=20)
+        if r.status_code != 429 or attempt == 2:
+            break
+        retry = r.headers.get("Retry-After", "")
+        time.sleep(min(int(retry) if retry.isdigit() else 30 * (attempt + 1), 90))
     r.raise_for_status()
+    return r
+
+
+def _detail(s: requests.Session, url: str, item) -> Optional[Event]:
+    r = _get(s, url)
     data = None
     for block in LD_RE.findall(r.text):
         try:

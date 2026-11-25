@@ -76,7 +76,9 @@ def page_text(s: requests.Session, url: str, selector: str = "") -> str:
 
 def extract(client: anthropic.Anthropic, title: str, as_of: datetime, text: str,
             model: str = MODEL) -> List[ExtractedEvent]:
-    if not usage.allow("extract"):
+    # Kostenschätzung nach Textlänge: ~3,5 Zeichen/Token, Antwort bis ~0,7× Eingabe (Sonnet 5: 2 $/10 $ je Mio.)
+    tokens = (len(text) + len(SYSTEM)) / 3.5
+    if not usage.allow("extract", max(0.02, tokens * (2 + 0.7 * 10) / 1e6)):
         raise usage.BudgetExceeded("Tagesbudget fürs Auslesen erreicht")
     response = client.messages.create(
         model=model,

@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 import requests
 
 from . import curate, ics, score, usage
-from .sources import berlinde, luma, mitvergnuegen, private, web
+from .sources import berlinde, eventbrite, luma, mitvergnuegen, private, web
 
 ROOT = Path(__file__).resolve().parent.parent
 USER_AGENT = "berlin-guide/0.1 (private event calendar; +https://github.com/kaielharrar/berlin-guide)"
@@ -23,6 +23,7 @@ log = logging.getLogger("berlin_guide")
 FREE_SOURCES = {  # ohne Claude
     "luma": luma.fetch,
     "berlin.de": berlinde.fetch,
+    "Eventbrite": eventbrite.fetch,
 }
 CLAUDE_SOURCES = {  # lesen Seiten mit Claude aus – teilen sich das Tagesbudget
     "Mit Vergnügen": mitvergnuegen.fetch,

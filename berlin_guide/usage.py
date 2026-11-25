@@ -52,21 +52,23 @@ def totals() -> Dict[str, Dict[str, float]]:
     return _totals
 
 
-# --- Tagesbudget --------------------------------------------------------------
-# Gezählt wird über alle Läufe eines Tages (Stand in cache/budget.json, wandert mit
-# dem Actions-Cache). Auslesen darf höchstens EXTRACT_SHARE des Budgets verbrauchen,
-# damit fürs Bewerten neuer Events immer etwas übrig bleibt. Was wegen des Budgets
-# liegen bleibt, wird nicht gecacht und am nächsten Tag nachgeholt.
+# --- Budget -------------------------------------------------------------------
+# Tagesbudget, abgerechnet über ein rollierendes 7-Tage-Fenster: In 7 Tagen wird höchstens
+# 7 × Tagesbudget ausgegeben. So passt auch mal eine lange Artikelseite (≈0,06 $), die allein
+# über einem Tagesbudget liegt – dafür wird an den Folgetagen weniger ausgegeben.
+# Stand in cache/budget.json (wandert mit dem Actions-Cache). Auslesen darf höchstens
+# EXTRACT_SHARE verbrauchen, damit fürs Bewerten neuer Events immer etwas übrig bleibt.
+# Was wegen des Budgets liegen bleibt, wird nicht gecacht und später nachgeholt.
 import json as _json
-from datetime import date as _date
+from datetime import date as _date, timedelta as _timedelta
 from pathlib import Path as _Path
 
+WINDOW_DAYS = 7
 EXTRACT_SHARE = 0.6
-# Geschätzte Kosten eines Aufrufs (Sonnet 5, medium): ein Aufruf startet nur, wenn er
-# voraussichtlich noch ins Budget passt – so wird das Limit nicht um einen Aufruf überzogen.
+# Geschätzte Kosten eines Aufrufs (Sonnet 5, medium), damit ein Aufruf das Budget nicht überzieht.
 ESTIMATE = {"extract": 0.03, "score": 0.015}
 _BUDGET_FILE = _Path(__file__).resolve().parent.parent / "cache" / "budget.json"
-_budget = {"limit": None, "day": "", "spent_before": 0.0}
+_budget = {"limit": None, "day": "", "history": {}, "extract_before": 0.0}
 
 
 class BudgetExceeded(RuntimeError):
@@ -75,30 +77,51 @@ class BudgetExceeded(RuntimeError):
 
 def set_daily_budget(limit_usd) -> None:
     _budget["limit"] = float(limit_usd) if limit_usd else None
-    today = _date.today().isoformat()
+    today = _date.today()
     try:
         saved = _json.loads(_BUDGET_FILE.read_text())
     except (OSError, ValueError):
         saved = {}
-    _budget["day"] = today
-    _budget["spent_before"] = float(saved.get("spent", 0.0)) if saved.get("day") == today else 0.0
+    days = saved.get("days") or ({saved["day"]: {"all": saved.get("spent", 0.0)}} if saved.get("day") else {})
+    first = (today - _timedelta(days=WINDOW_DAYS - 1)).isoformat()
+    _budget["day"] = today.isoformat()
+    _budget["history"] = {d: v for d, v in days.items() if d >= first}
+
+
+def _run(kind: str = "") -> float:
+    return sum(cost(k.split(":", 1)[1], t) for k, t in _totals.items() if k.startswith(kind))
+
+
+def _window(field: str) -> float:
+    return sum(v.get(field, 0.0) for d, v in _budget["history"].items() if d != _budget["day"]) \
+        + _budget["history"].get(_budget["day"], {}).get(field, 0.0)
 
 
 def spent_today() -> float:
-    run = sum(cost(k.split(":", 1)[1], t) for k, t in _totals.items())
-    return _budget["spent_before"] + run
+    return _budget["history"].get(_budget["day"], {}).get("all", 0.0) + _run()
 
 
-def allow(kind: str) -> bool:
+def allow(kind: str, estimate: float | None = None) -> bool:
     limit = _budget["limit"]
     if limit is None:
         return True
-    cap = limit * EXTRACT_SHARE if kind == "extract" else limit
-    return spent_today() + ESTIMATE.get(kind, 0.0) <= cap
+    est = ESTIMATE.get(kind, 0.0) if estimate is None else estimate
+    total = WINDOW_DAYS * limit
+    if kind == "extract":
+        return _window("extract") + _run("extract:") + est <= total * EXTRACT_SHARE \
+            and _window("all") + _run() + est <= total
+    return _window("all") + _run() + est <= total
 
 
 def save_budget() -> str:
+    h = _budget["history"].setdefault(_budget["day"], {})
+    h["all"] = round(h.get("all", 0.0) + _run(), 4)
+    h["extract"] = round(h.get("extract", 0.0) + _run("extract:"), 4)
+    _totals.clear()
     _BUDGET_FILE.parent.mkdir(parents=True, exist_ok=True)
-    _BUDGET_FILE.write_text(_json.dumps({"day": _budget["day"], "spent": round(spent_today(), 4)}))
+    _BUDGET_FILE.write_text(_json.dumps({"days": _budget["history"]}))
     limit = _budget["limit"]
-    return f"Budget heute: ${spent_today():.3f}" + (f" von ${limit:.3f}" if limit else " (kein Limit)")
+    if not limit:
+        return f"Budget heute: ${h['all']:.3f} (kein Limit)"
+    return (f"Budget heute: ${h['all']:.3f} | letzte {WINDOW_DAYS} Tage: ${_window('all'):.3f} "
+            f"von ${WINDOW_DAYS * limit:.3f} (Ø ${limit:.3f}/Tag)")
