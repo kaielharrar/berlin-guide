@@ -64,7 +64,7 @@ from datetime import date as _date, timedelta as _timedelta
 from pathlib import Path as _Path
 
 WINDOW_DAYS = 7
-MAX_DAY_FACTOR = 2  # an einem einzelnen Tag höchstens 2 × Tagesbudget
+MAX_DAY_FACTOR = 1  # Tagesbudget ist harte Obergrenze pro Tag
 EXTRACT_SHARE = 0.6
 # Geschätzte Kosten eines Aufrufs (Sonnet 5, medium), damit ein Aufruf das Budget nicht überzieht.
 ESTIMATE = {"extract": 0.03, "score": 0.015}
